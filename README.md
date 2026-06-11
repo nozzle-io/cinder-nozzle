@@ -2,7 +2,7 @@
 
 Initial CinderBlock/addon implementation spike for nozzle diagnostics, Cinder `ci::gl::TextureRef`-shaped sender/receiver helpers, deterministic CPU pixel smoke scaffolding, CMake/package validation, a macOS Cinder `RendererGl` runtime smoke with runtime-generated CPU pixel buffer nozzle sender/receiver interop, and explicit unsupported runtime states.
 
-This proves only the local macOS CPU-copy pixel-buffer path inside a real Cinder runtime app until exact CI evidence is recorded. It is not a Cinder GL texture interop proof and it is not a zero-copy GPU support claim.
+This proves only the macOS CPU-copy pixel-buffer path inside a real Cinder runtime app. It is not a Cinder GL texture interop proof and it is not a zero-copy GPU support claim. It is not a Cinder GL texture interop proof and it is not a zero-copy GPU support claim.
 
 ## Target
 
@@ -62,8 +62,8 @@ and verifies its SHA-256 before building the temporary Cinder app.
 | Cinder `RendererGl` app startup/context | PASS on macOS CI | real Cinder app starts, creates a current GL context, runs one draw, and exits deterministically |
 | CPU pattern oracle inside Cinder app 320x240 | PASS on macOS CI | deterministic positive plus y-flip, R/B swap, alpha mutation, and byte-size negative probes inside the runtime app |
 | CPU pattern oracle inside Cinder app 641x479 | PASS on macOS CI | odd-size deterministic positive plus y-flip, R/B swap, alpha mutation, and byte-size negative probes inside the runtime app |
-| Runtime-generated RGBA CPU pixels -> nozzle writable frame -> independent receiver 320x240 | PASS in local macOS runtime smoke; CI evidence pending | `CINDER_NOZZLE_FRAME_INTEROP size=320x240 frame_sender=PASS frame_receiver=PASS ... short_buffer=PASS copy_cost=cpu-copy`; RGBA/BGRA storage is normalized back to RGBA before the probe-based oracle checks y-flip/R/B/alpha |
-| Runtime-generated RGBA CPU pixels -> nozzle writable frame -> independent receiver 641x479 | PASS in local macOS runtime smoke; CI evidence pending | `CINDER_NOZZLE_FRAME_INTEROP size=641x479 frame_sender=PASS frame_receiver=PASS ... short_buffer=PASS copy_cost=cpu-copy`; odd-size path uses the same probe-based deterministic oracle |
+| Runtime-generated RGBA CPU pixels -> nozzle writable frame -> independent receiver 320x240 | PASS on macOS CI | `CINDER_NOZZLE_FRAME_INTEROP size=320x240 frame_sender=PASS frame_receiver=PASS ... short_buffer=PASS copy_cost=cpu-copy`; RGBA/BGRA storage is normalized back to RGBA before the probe-based oracle checks y-flip/R/B/alpha |
+| Runtime-generated RGBA CPU pixels -> nozzle writable frame -> independent receiver 641x479 | PASS on macOS CI | `CINDER_NOZZLE_FRAME_INTEROP size=641x479 frame_sender=PASS frame_receiver=PASS ... short_buffer=PASS copy_cost=cpu-copy`; odd-size path uses the same probe-based deterministic oracle |
 | Cinder `ci::gl::TextureRef` runtime publish/copy | MISSING_HOST_SMOKE | real Cinder textures are created, but no nozzle texture-transfer frame oracle is executed |
 | macOS GL IOSurface/blit correctness | MISSING_HOST_SMOKE | runtime smoke proves context and texture object creation only, not texture transfer correctness |
 | Windows fast GPU interop | UNSUPPORTED | blocked until core #6-style path is implemented/verified |
