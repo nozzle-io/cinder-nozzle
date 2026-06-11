@@ -2,15 +2,19 @@
 #include "cinder/nozzle/Status.h"
 
 #include <array>
-#include <stdexcept>
+#include <limits>
 
 namespace cinder::nozzle {
 
 std::vector<std::uint8_t> make_rgba_pattern(std::uint32_t width, std::uint32_t height) {
     if (width == 0 || height == 0) {
-        throw std::invalid_argument("width/height must be positive");
+        return {};
     }
-    std::vector<std::uint8_t> out(static_cast<std::size_t>(width) * height * 4u);
+    const auto pixel_count = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
+    if (pixel_count > std::numeric_limits<std::size_t>::max() / 4u) {
+        return {};
+    }
+    std::vector<std::uint8_t> out(pixel_count * 4u);
     for (std::uint32_t y = 0; y < height; ++y) {
         for (std::uint32_t x = 0; x < width; ++x) {
             const auto base = (static_cast<std::size_t>(y) * width + x) * 4u;
@@ -25,7 +29,13 @@ std::vector<std::uint8_t> make_rgba_pattern(std::uint32_t width, std::uint32_t h
 }
 
 status assert_rgba_pattern(const std::vector<std::uint8_t> &rgba, std::uint32_t width, std::uint32_t height) {
+    if (width == 0 || height == 0) {
+        return {path_status::fail, "width/height must be positive"};
+    }
     const auto expected = make_rgba_pattern(width, height);
+    if (expected.empty()) {
+        return {path_status::fail, "rgba dimensions overflow"};
+    }
     if (rgba.size() != expected.size()) {
         return {path_status::fail, "rgba byte size mismatch"};
     }

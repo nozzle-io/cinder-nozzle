@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import re
+import shutil
+import subprocess
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
@@ -12,6 +13,7 @@ required = [
     PKG / 'include/cinder/nozzle/NozzleSender.h',
     PKG / 'include/cinder/nozzle/NozzleReceiver.h',
     PKG / 'include/cinder/nozzle/NozzleDiagnostics.h',
+    PKG / 'deps/nozzle/include/nozzle/nozzle_c.h',
     PKG / 'src/cinder/nozzle/NozzleSender.cpp',
     PKG / 'src/cinder/nozzle/NozzleReceiver.cpp',
     PKG / 'proj/cmake/CinderNozzleConfig.cmake',
@@ -42,4 +44,27 @@ with zipfile.ZipFile(zips[0]) as zf:
         raise SystemExit(f'wrong zip roots: {roots}')
     if any(name.startswith('cinder-nozzle-latest-') for name in names):
         raise SystemExit('zip contains extra wrapper directory')
-print('cinder package shape ok')
+    if 'cinder-nozzle/deps/nozzle/include/nozzle/nozzle_c.h' not in names:
+        raise SystemExit('zip missing nozzle C API headers')
+
+consumer = ROOT / 'build/package-consumer-check'
+if consumer.exists():
+    shutil.rmtree(consumer)
+consumer.mkdir(parents=True)
+(consumer / 'CMakeLists.txt').write_text(f'''
+cmake_minimum_required(VERSION 3.20)
+project(cinder_nozzle_package_consumer LANGUAGES CXX)
+include("{(PKG / 'proj/cmake/CinderNozzleConfig.cmake').as_posix()}")
+add_executable(package_consumer main.cpp)
+target_link_libraries(package_consumer PRIVATE CinderNozzle)
+''', encoding='utf-8')
+(consumer / 'main.cpp').write_text('''
+#include "cinder/nozzle/CinderNozzle.h"
+int main() {
+    auto diagnostics = cinder::nozzle::capture_diagnostics();
+    return diagnostics.cinder_target == "v0.9.3" ? 0 : 1;
+}
+''', encoding='utf-8')
+subprocess.run(['cmake', '-S', str(consumer), '-B', str(consumer / 'build'), '-DCMAKE_BUILD_TYPE=Release'], check=True)
+subprocess.run(['cmake', '--build', str(consumer / 'build'), '--config', 'Release'], check=True)
+print('cinder package shape and consumer build ok')

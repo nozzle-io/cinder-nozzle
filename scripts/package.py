@@ -12,12 +12,13 @@ if PKG.exists():
     shutil.rmtree(PKG)
 for rel in ['include', 'src', 'proj', 'samples']:
     shutil.copytree(ROOT / rel, PKG / rel)
+shutil.copytree(ROOT / 'deps/nozzle/include', PKG / 'deps/nozzle/include')
 for rel in ['README.md', 'LICENSE', 'cinderblock.xml']:
     shutil.copy2(ROOT / rel, PKG / rel)
 short = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], cwd=ROOT, text=True).strip()
+for old_zip in BUILD.glob('cinder-nozzle-latest-*.zip'):
+    old_zip.unlink()
 zip_path = BUILD / f'cinder-nozzle-latest-{short}.zip'
-if zip_path.exists():
-    zip_path.unlink()
 with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
     for path in sorted(PKG.rglob('*')):
         if path.is_file():
