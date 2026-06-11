@@ -34,3 +34,6 @@ jobs:
         run: python3 scripts/package.py
       - name: Check package shape
         run: python3 tests/check_package.py
+      - name: Cinder RendererGl runtime smoke
+        if: runner.os == 'macOS'
+        run: python3 scripts/run_cinder_runtime_smoke.py

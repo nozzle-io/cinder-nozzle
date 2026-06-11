@@ -2,6 +2,10 @@
 #include "cinder/nozzle/TextureTypes.h"
 #include "nozzle/nozzle_c.h"
 
+#if CINDER_NOZZLE_HAS_CINDER_GL
+#include "cinder/gl/wrapper.h"
+#endif
+
 #include <sstream>
 
 namespace cinder::nozzle {
@@ -9,7 +13,11 @@ namespace cinder::nozzle {
 diagnostics capture_diagnostics() {
     diagnostics out;
     out.cinder_gl_headers_available = CINDER_NOZZLE_HAS_CINDER_GL != 0;
+#if CINDER_NOZZLE_HAS_CINDER_GL
+    out.current_gl_context_proven = cinder::gl::context() != nullptr;
+#else
     out.current_gl_context_proven = false;
+#endif
     out.cinder_runtime_texture_path = path_status::missing_host_smoke;
     out.windows_fast_gpu_interop = path_status::unsupported;
     out.linux_gl_interop = path_status::unsupported;
