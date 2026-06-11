@@ -26,7 +26,7 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libdrm-dev
+        run: sudo apt-get update && sudo apt-get install -y libdrm-dev libgbm-dev libegl1-mesa-dev
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
       - name: Build
