@@ -2,7 +2,7 @@
 
 Initial CinderBlock/addon implementation spike for nozzle diagnostics, Cinder `ci::gl::TextureRef`-shaped sender/receiver helpers, deterministic CPU pixel smoke scaffolding, CMake/package validation, a macOS Cinder `RendererGl` runtime smoke with runtime-generated CPU pixel buffer nozzle sender/receiver interop, and explicit unsupported runtime states.
 
-This proves only the macOS CPU-copy pixel-buffer path inside a real Cinder runtime app. It is not a Cinder GL texture interop proof and it is not a zero-copy GPU support claim. It is not a Cinder GL texture interop proof and it is not a zero-copy GPU support claim.
+This proves only the macOS CPU-copy pixel-buffer path inside a real Cinder runtime app. It is not a Cinder GL texture interop proof and it is not a zero-copy GPU support claim.
 
 ## Target
 
