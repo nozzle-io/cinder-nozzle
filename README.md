@@ -1,8 +1,8 @@
 # cinder-nozzle
 
-Initial CinderBlock/addon implementation spike for nozzle diagnostics, Cinder `ci::gl::TextureRef`-shaped sender/receiver helpers, deterministic CPU pixel smoke scaffolding, CMake/package validation, a macOS Cinder `RendererGl` runtime smoke, and explicit unsupported runtime states.
+Initial CinderBlock/addon implementation spike for nozzle diagnostics, Cinder `ci::gl::TextureRef`-shaped sender/receiver helpers, deterministic CPU pixel smoke scaffolding, CMake/package validation, a macOS Cinder `RendererGl` runtime smoke with runtime-generated CPU pixel buffer nozzle sender/receiver interop, and explicit unsupported runtime states.
 
-This is not a Cinder texture interop proof and it is not a zero-copy GPU support claim.
+This proves only the local macOS CPU-copy pixel-buffer path inside a real Cinder runtime app until exact CI evidence is recorded. It is not a Cinder GL texture interop proof and it is not a zero-copy GPU support claim.
 
 ## Target
 
@@ -21,13 +21,13 @@ This is not a Cinder texture interop proof and it is not a zero-copy GPU support
 - Deterministic CPU RGBA pattern/oracle for `320x240` and `641x479`.
 - Samples for sender, receiver, and diagnostics.
 - Package-shape check, package consumer compile check, and zip output with exactly one top-level `cinder-nozzle/` folder.
-- macOS CI runtime smoke that downloads the official Cinder 0.9.3 mac package, builds a real `RendererGl` app, creates a current GL context, runs CPU oracles inside the app, passes real `ci::gl::Texture2d` objects to the sender/receiver-shaped APIs, and exits deterministically.
+- macOS CI runtime smoke that downloads the official Cinder 0.9.3 mac package, builds a real `RendererGl` app, creates a current GL context, runs CPU oracles inside the app, publishes deterministic runtime-generated RGBA CPU pixels through nozzle writable frames, receives them through an independent nozzle receiver, validates copied pixels for `320x240` and `641x479`, keeps `ci::gl::Texture2d` transfer explicitly `MISSING_HOST_SMOKE`, and exits deterministically.
 
 ## Not claimed
 
 - No Windows fast GPU interop claim.
 - No Linux GL support claim.
-- No macOS Cinder texture transfer correctness claim yet.
+- No macOS Cinder GL texture transfer correctness claim yet.
 - No release artifact publication.
 - No Processing scope.
 
@@ -62,7 +62,9 @@ and verifies its SHA-256 before building the temporary Cinder app.
 | Cinder `RendererGl` app startup/context | PASS on macOS CI | real Cinder app starts, creates a current GL context, runs one draw, and exits deterministically |
 | CPU pattern oracle inside Cinder app 320x240 | PASS on macOS CI | deterministic positive plus y-flip, R/B swap, alpha mutation, and byte-size negative probes inside the runtime app |
 | CPU pattern oracle inside Cinder app 641x479 | PASS on macOS CI | odd-size deterministic positive plus y-flip, R/B swap, alpha mutation, and byte-size negative probes inside the runtime app |
-| Cinder `ci::gl::TextureRef` runtime publish/copy | MISSING_HOST_SMOKE | real Cinder textures are created, but no nozzle sender/receiver frame oracle is executed |
+| Runtime-generated RGBA CPU pixels -> nozzle writable frame -> independent receiver 320x240 | PASS in local macOS runtime smoke; CI evidence pending | `CINDER_NOZZLE_FRAME_INTEROP size=320x240 frame_sender=PASS frame_receiver=PASS ... short_buffer=PASS copy_cost=cpu-copy`; RGBA/BGRA storage is normalized back to RGBA before the probe-based oracle checks y-flip/R/B/alpha |
+| Runtime-generated RGBA CPU pixels -> nozzle writable frame -> independent receiver 641x479 | PASS in local macOS runtime smoke; CI evidence pending | `CINDER_NOZZLE_FRAME_INTEROP size=641x479 frame_sender=PASS frame_receiver=PASS ... short_buffer=PASS copy_cost=cpu-copy`; odd-size path uses the same probe-based deterministic oracle |
+| Cinder `ci::gl::TextureRef` runtime publish/copy | MISSING_HOST_SMOKE | real Cinder textures are created, but no nozzle texture-transfer frame oracle is executed |
 | macOS GL IOSurface/blit correctness | MISSING_HOST_SMOKE | runtime smoke proves context and texture object creation only, not texture transfer correctness |
 | Windows fast GPU interop | UNSUPPORTED | blocked until core #6-style path is implemented/verified |
 | Linux GL interop | UNSUPPORTED | blocked until Linux GBM/EGL evidence exists |

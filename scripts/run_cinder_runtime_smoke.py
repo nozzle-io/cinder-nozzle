@@ -93,6 +93,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 include("{(CINDER_DIR / 'proj/cmake/modules/cinderMakeApp.cmake').as_posix()}")
+set(NOZZLE_INSTALL OFF CACHE BOOL "" FORCE)
+set(NOZZLE_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(NOZZLE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory("{(ROOT / 'deps/nozzle').as_posix()}" "${{CMAKE_BINARY_DIR}}/nozzle-build")
+
 ci_make_app(
     APP_NAME CinderNozzleRuntimeSmoke
     SOURCES
@@ -102,6 +107,7 @@ ci_make_app(
         "{(ROOT / 'deps/nozzle/include').as_posix()}"
     CINDER_PATH "{CINDER_DIR.as_posix()}"
 )
+target_link_libraries(CinderNozzleRuntimeSmoke PRIVATE nozzle)
 ''', encoding='utf-8')
     env = os.environ.copy()
     env.setdefault('CMAKE_BUILD_PARALLEL_LEVEL', str(os.cpu_count() or 2))
