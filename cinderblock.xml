@@ -1,0 +1,11 @@
+<cinderblock>
+  <name>cinder-nozzle</name>
+  <id>io.nozzle.cinder</id>
+  <version>0.1.0</version>
+  <author>nozzle contributors</author>
+  <url>https://github.com/nozzle-io/cinder-nozzle</url>
+  <description>CinderBlock implementation spike for nozzle diagnostics and Cinder GL texture helper API shape.</description>
+  <sourcePattern>src/cinder/nozzle/*.cpp</sourcePattern>
+  <headerPattern>include/cinder/nozzle/*.h</headerPattern>
+  <includePath>include</includePath>
+</cinderblock>
