@@ -4,6 +4,8 @@
 #include "cinder/nozzle/Status.h"
 #include "cinder/nozzle/TextureTypes.h"
 
+struct NozzleSender;
+
 namespace cinder::nozzle {
 
 enum class texture_format {
@@ -26,6 +28,7 @@ public:
 private:
     std::string name_;
     bool stopped_ = false;
+    NozzleSender *sender_ = nullptr;
 };
 
 } // namespace cinder::nozzle

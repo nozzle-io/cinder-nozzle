@@ -5,6 +5,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(NOZZLE_INSTALL OFF CACHE BOOL "" FORCE)
+set(NOZZLE_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(NOZZLE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory(deps/nozzle)
+
+
 add_library(cinder_nozzle STATIC
     src/cinder/nozzle/NozzleDiagnostics.cpp
     src/cinder/nozzle/NozzleDiscovery.cpp
@@ -17,6 +23,7 @@ target_include_directories(cinder_nozzle PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/deps/nozzle/include
 )
+target_link_libraries(cinder_nozzle PUBLIC nozzle)
 
 add_executable(cinder_nozzle_self_test tests/self_test.cpp)
 target_link_libraries(cinder_nozzle_self_test PRIVATE cinder_nozzle)

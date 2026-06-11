@@ -35,6 +35,23 @@ def run(cmd, cwd=None, env=None):
     subprocess.run(cmd, cwd=cwd, env=env, check=True)
 
 
+def run_capture(cmd, cwd=None, env=None):
+    print('+ ' + ' '.join(str(part) for part in cmd), flush=True)
+    completed = subprocess.run(cmd, cwd=cwd, env=env, text=True, capture_output=True, check=False)
+    if completed.stdout:
+        print(completed.stdout, end='')
+    if completed.stderr:
+        print(completed.stderr, end='', file=sys.stderr)
+    if completed.returncode != 0:
+        raise subprocess.CalledProcessError(completed.returncode, cmd, completed.stdout, completed.stderr)
+    return completed.stdout + completed.stderr
+
+
+def require_marker(output, marker):
+    if marker not in output:
+        raise SystemExit(f'missing runtime smoke marker: {marker}')
+
+
 def sha256(path):
     h = hashlib.sha256()
     with path.open('rb') as f:
@@ -116,7 +133,17 @@ target_link_libraries(CinderNozzleRuntimeSmoke PRIVATE nozzle)
     candidates = sorted(build_dir.rglob('CinderNozzleRuntimeSmoke.app/Contents/MacOS/CinderNozzleRuntimeSmoke'))
     if not candidates:
         raise SystemExit('built app executable not found')
-    run([str(candidates[0])], env=env)
+    output = run_capture([str(candidates[0])], env=env)
+    for marker in [
+        'CINDER_NOZZLE_GL_CONTEXT current=PASS',
+        'CINDER_NOZZLE_TEXTURE_INTEROP size=320x240 texture_sender=PASS texture_receiver=PASS texture_transfer=PASS macos_iosurface_blit=FAIL copy_cost=cpu-copy',
+        'CINDER_NOZZLE_TEXTURE_INTEROP size=641x479 texture_sender=PASS texture_receiver=PASS texture_transfer=PASS macos_iosurface_blit=FAIL copy_cost=cpu-copy',
+        'CINDER_NOZZLE_TEXTURE_TRANSFER texture_sender=PASS texture_receiver=PASS texture_transfer=PASS macos_iosurface_blit=FAIL copy_cost=cpu-copy',
+        'CINDER_NOZZLE_FRAME_INTEROP size=320x240 frame_sender=PASS frame_receiver=PASS',
+        'CINDER_NOZZLE_FRAME_INTEROP size=641x479 frame_sender=PASS frame_receiver=PASS',
+        'CINDER_NOZZLE_RUNTIME_SMOKE PASS',
+    ]:
+        require_marker(output, marker)
 
 
 if __name__ == '__main__':

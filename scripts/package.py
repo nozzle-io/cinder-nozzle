@@ -12,7 +12,7 @@ if PKG.exists():
     shutil.rmtree(PKG)
 for rel in ['include', 'src', 'proj', 'samples']:
     shutil.copytree(ROOT / rel, PKG / rel)
-shutil.copytree(ROOT / 'deps/nozzle/include', PKG / 'deps/nozzle/include')
+shutil.copytree(ROOT / 'deps/nozzle', PKG / 'deps/nozzle', ignore=shutil.ignore_patterns('.git', 'build', 'out'))
 for rel in ['README.md', 'LICENSE', 'cinderblock.xml']:
     shutil.copy2(ROOT / rel, PKG / rel)
 short = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], cwd=ROOT, text=True).strip()

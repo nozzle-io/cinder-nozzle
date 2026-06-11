@@ -31,7 +31,7 @@ for tag in ['name', 'id', 'version', 'sourcePattern', 'headerPattern', 'includeP
 if root.findtext('name') != 'cinder-nozzle':
     raise SystemExit('cinderblock name mismatch')
 readme = (PKG / 'README.md').read_text(encoding='utf-8')
-for phrase in ['No Windows fast GPU interop claim', 'No Linux GL support claim', 'MISSING_HOST_SMOKE', 'v0.9.3']:
+for phrase in ['No Windows fast GPU interop claim', 'No Linux GL support claim', 'CPU-copy receiver fallback', 'macos_iosurface_blit=FAIL', 'v0.9.3']:
     if phrase not in readme:
         raise SystemExit(f'README missing {phrase}')
 zips = sorted((ROOT / 'build').glob('cinder-nozzle-latest-*.zip'))

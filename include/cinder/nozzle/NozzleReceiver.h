@@ -4,6 +4,8 @@
 #include "cinder/nozzle/Status.h"
 #include "cinder/nozzle/TextureTypes.h"
 
+struct NozzleReceiver;
+
 namespace cinder::nozzle {
 
 class receiver {
@@ -21,6 +23,7 @@ public:
 private:
     std::string source_name_;
     bool stopped_ = false;
+    NozzleReceiver *receiver_ = nullptr;
 };
 
 } // namespace cinder::nozzle

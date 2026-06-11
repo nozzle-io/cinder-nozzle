@@ -77,6 +77,125 @@ bool exercise_pattern_oracle(std::uint32_t width, std::uint32_t height) {
     return ok;
 }
 
+ci::Surface8u surface_from_rgba(const std::vector<std::uint8_t> &rgba, std::uint32_t width, std::uint32_t height) {
+    ci::Surface8u surface(static_cast<int32_t>(width), static_cast<int32_t>(height), true, ci::SurfaceChannelOrder::RGBA);
+    for(std::uint32_t y = 0; y < height; ++y) {
+        for(std::uint32_t x = 0; x < width; ++x) {
+            const auto source_base = (static_cast<std::size_t>(y) * width + x) * 4u;
+            auto *pixel = surface.getData(ci::ivec2(static_cast<int32_t>(x), static_cast<int32_t>(y)));
+            pixel[surface.getRedOffset()] = rgba[source_base + 0u];
+            pixel[surface.getGreenOffset()] = rgba[source_base + 1u];
+            pixel[surface.getBlueOffset()] = rgba[source_base + 2u];
+            pixel[surface.getAlphaOffset()] = rgba[source_base + 3u];
+        }
+    }
+    return surface;
+}
+
+std::vector<std::uint8_t> surface_to_rgba(const ci::Surface8u &surface) {
+    if(!surface.hasAlpha()) {
+        return {};
+    }
+    const auto width = static_cast<std::uint32_t>(surface.getWidth());
+    const auto height = static_cast<std::uint32_t>(surface.getHeight());
+    std::vector<std::uint8_t> rgba(static_cast<std::size_t>(width) * height * 4u);
+    for(std::uint32_t y = 0; y < height; ++y) {
+        for(std::uint32_t x = 0; x < width; ++x) {
+            const auto destination_base = (static_cast<std::size_t>(y) * width + x) * 4u;
+            const auto *pixel = surface.getData(ci::ivec2(static_cast<int32_t>(x), static_cast<int32_t>(y)));
+            rgba[destination_base + 0u] = pixel[surface.getRedOffset()];
+            rgba[destination_base + 1u] = pixel[surface.getGreenOffset()];
+            rgba[destination_base + 2u] = pixel[surface.getBlueOffset()];
+            rgba[destination_base + 3u] = pixel[surface.getAlphaOffset()];
+        }
+    }
+    return rgba;
+}
+
+struct texture_interop_result {
+    bool pass = false;
+    std::string sender_status = "FAIL";
+    std::string receiver_status = "FAIL";
+    std::string texture_transfer_status = "FAIL";
+    std::string macos_iosurface_blit_status = "UNPROVEN";
+    std::string copy_cost = "UNPROVEN";
+    std::string message;
+};
+
+texture_interop_result exercise_cinder_texture_interop(std::uint32_t width, std::uint32_t height) {
+    texture_interop_result result;
+    const auto pattern = cinder::nozzle::make_rgba_pattern(width, height);
+    const auto source_name = "cinder-runtime-smoke-texture-" + std::to_string(width) + "x" + std::to_string(height);
+    const auto sender_surface = surface_from_rgba(pattern, width, height);
+    ci::gl::Texture2d::Format texture_format;
+    texture_format.loadTopDown(false);
+    auto sender_texture = ci::gl::Texture2d::create(sender_surface, texture_format);
+    auto receiver_texture = ci::gl::Texture2d::create(static_cast<int>(width), static_cast<int>(height), texture_format);
+
+    cinder::nozzle::sender texture_sender{source_name};
+    cinder::nozzle::receiver texture_receiver{source_name};
+    const auto sender_status = texture_sender.publish_texture(sender_texture, cinder::nozzle::texture_format::rgba8_unorm);
+    if(!sender_status.ok()) {
+        result.sender_status = cinder::nozzle::to_string(sender_status.code);
+        result.message = sender_status.message;
+        texture_sender.stop();
+        texture_receiver.stop();
+        return result;
+    }
+    result.sender_status = "PASS";
+
+    const auto receiver_status = texture_receiver.try_update_texture(receiver_texture);
+    if(!receiver_status.ok()) {
+        result.receiver_status = cinder::nozzle::to_string(receiver_status.code);
+        result.message = receiver_status.message;
+        texture_sender.stop();
+        texture_receiver.stop();
+        return result;
+    }
+    result.receiver_status = "PASS";
+    if(receiver_status.message.find("copy_path=cpu-fallback") != std::string::npos &&
+       receiver_status.message.find("copy_cost=cpu-copy") != std::string::npos &&
+       receiver_status.message.find("macos_iosurface_blit=FAIL") != std::string::npos) {
+        result.macos_iosurface_blit_status = "FAIL";
+        result.copy_cost = "cpu-copy";
+    } else if(receiver_status.message.find("copy_path=gl") != std::string::npos &&
+              receiver_status.message.find("copy_cost=gpu-copy") != std::string::npos &&
+              receiver_status.message.find("macos_iosurface_blit=PASS") != std::string::npos) {
+        result.macos_iosurface_blit_status = "PASS";
+        result.copy_cost = "gpu-copy";
+    } else {
+        result.texture_transfer_status = "FAIL";
+        result.message = "missing-copy-path-token: " + receiver_status.message;
+        texture_sender.stop();
+        texture_receiver.stop();
+        return result;
+    }
+
+    const ci::Surface8u received_surface(receiver_texture->createSource(), ci::SurfaceConstraintsDefault(), true);
+    const auto received_rgba = surface_to_rgba(received_surface);
+    if(received_rgba.size() != pattern.size()) {
+        result.texture_transfer_status = "FAIL";
+        result.message = "received-byte-size-mismatch";
+        texture_sender.stop();
+        texture_receiver.stop();
+        return result;
+    }
+    if(received_rgba != pattern) {
+        result.texture_transfer_status = "FAIL";
+        result.message = "texture-rgba-full-buffer-mismatch";
+        texture_sender.stop();
+        texture_receiver.stop();
+        return result;
+    }
+
+    result.pass = true;
+    result.texture_transfer_status = "PASS";
+    result.message = receiver_status.message;
+    texture_sender.stop();
+    texture_receiver.stop();
+    return result;
+}
+
 const char *nozzle_error_name(NozzleErrorCode code) {
     switch (code) {
         case NOZZLE_OK: return "NOZZLE_OK";
@@ -509,20 +628,27 @@ public:
             fail_now("cpu-oracle-641x479", 6);
         }
 
-        auto sender_texture = ci::gl::Texture2d::create(320, 240);
-        auto receiver_texture = ci::gl::Texture2d::create(641, 479);
-        cinder::nozzle::sender texture_sender{"cinder-runtime-smoke-texture"};
-        cinder::nozzle::receiver texture_receiver{"cinder-runtime-smoke-texture"};
-        const auto texture_sender_status = texture_sender.publish_texture(sender_texture);
-        const auto texture_receiver_status = texture_receiver.try_update_texture(receiver_texture);
-        if (texture_sender_status.code != cinder::nozzle::path_status::missing_host_smoke) {
-            fail_now("unexpected-texture-sender-status", 7);
+        const auto texture_320 = exercise_cinder_texture_interop(320, 240);
+        std::cout << "CINDER_NOZZLE_TEXTURE_INTEROP size=320x240 texture_sender=" << texture_320.sender_status
+                  << " texture_receiver=" << texture_320.receiver_status
+                  << " texture_transfer=" << texture_320.texture_transfer_status
+                  << " macos_iosurface_blit=" << texture_320.macos_iosurface_blit_status
+                  << " copy_cost=" << texture_320.copy_cost
+                  << " detail=" << texture_320.message << "\n";
+        if (!texture_320.pass) {
+            fail_now("texture-interop-320x240", 7);
         }
-        if (texture_receiver_status.code != cinder::nozzle::path_status::missing_host_smoke) {
-            fail_now("unexpected-texture-receiver-status", 8);
+
+        const auto texture_641 = exercise_cinder_texture_interop(641, 479);
+        std::cout << "CINDER_NOZZLE_TEXTURE_INTEROP size=641x479 texture_sender=" << texture_641.sender_status
+                  << " texture_receiver=" << texture_641.receiver_status
+                  << " texture_transfer=" << texture_641.texture_transfer_status
+                  << " macos_iosurface_blit=" << texture_641.macos_iosurface_blit_status
+                  << " copy_cost=" << texture_641.copy_cost
+                  << " detail=" << texture_641.message << "\n";
+        if (!texture_641.pass) {
+            fail_now("texture-interop-641x479", 8);
         }
-        texture_sender.stop();
-        texture_receiver.stop();
 
         const auto interop_320 = exercise_nozzle_cpu_frame_interop(320, 240);
         std::cout << "CINDER_NOZZLE_FRAME_INTEROP size=320x240 frame_sender=" << interop_320.sender_status
@@ -548,10 +674,10 @@ public:
             fail_now("frame-interop-641x479", 10);
         }
 
-        std::cout << "CINDER_NOZZLE_TEXTURE_TRANSFER texture_sender="
-                  << cinder::nozzle::to_string(texture_sender_status.code)
-                  << " texture_receiver=" << cinder::nozzle::to_string(texture_receiver_status.code)
-                  << " texture_transfer=MISSING_HOST_SMOKE copy_cost=UNPROVEN\n";
+        const auto aggregate_macos_blit = (texture_320.macos_iosurface_blit_status == "PASS" && texture_641.macos_iosurface_blit_status == "PASS") ? "PASS" : "FAIL";
+        const auto aggregate_copy_cost = (texture_320.copy_cost == "gpu-copy" && texture_641.copy_cost == "gpu-copy") ? "gpu-copy" : "cpu-copy";
+        std::cout << "CINDER_NOZZLE_TEXTURE_TRANSFER texture_sender=PASS texture_receiver=PASS texture_transfer=PASS macos_iosurface_blit="
+                  << aggregate_macos_blit << " copy_cost=" << aggregate_copy_cost << "\n";
         std::cout << "CINDER_NOZZLE_FRAME_PATH frame_sender=PASS frame_receiver=PASS copy_cost=cpu-copy\n";
 
         std::cout << "CINDER_NOZZLE_RUNTIME_SMOKE PASS\n";
