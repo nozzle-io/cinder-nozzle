@@ -1,14 +1,12 @@
 # cinder-nozzle
 
-Initial CinderBlock/addon implementation spike for nozzle diagnostics, Cinder `ci::gl::TextureRef` sender/receiver helpers, deterministic CPU pixel smoke scaffolding, CMake/package validation, a macOS Cinder `RendererGl` runtime smoke with runtime-generated CPU pixel buffer nozzle sender/receiver interop, Cinder texture transfer via GL publish plus CPU-copy receiver fallback, and explicit unsupported runtime states.
-
-Current exact-SHA macOS CI evidence shows Cinder `ci::gl::TextureRef` transfer correctness only with CPU-copy receiver fallback. It does not prove macOS receiver IOSurface/blit correctness, top-down sender texture publishing, zero-copy, or end-to-end GPU-copy.
+CinderBlock for publishing and receiving nozzle textures with Cinder `ci::gl::TextureRef`. The macOS runtime smoke publishes a bottom-up RGBA8 texture, receives it through the IOSurface GL blit, and compares the entire RGBA buffer at two sizes.
 
 ## Target
 
 - Cinder release target: `v0.9.3`, annotated tag `221e15f04627ef5fb225a593cb0efa7be282d4f9`, tag target commit `70c2904643ac5978e439bd79ca64223169d366f6`.
 - Toolchain target: C++17.
-- nozzle submodule: `deps/nozzle` pinned to `a8efca3c847c39b76057a8e77f94b34146cc9125`.
+- nozzle submodule: the gitlink at `deps/nozzle` records the core revision used by CI.
 
 ## Implemented
 
@@ -22,14 +20,14 @@ Current exact-SHA macOS CI evidence shows Cinder `ci::gl::TextureRef` transfer c
 - Deterministic CPU RGBA pattern/oracle for `320x240` and `641x479`.
 - Samples for sender, receiver, and diagnostics.
 - Package-shape check, package consumer compile check, and zip output with exactly one top-level `cinder-nozzle/` folder.
-- macOS runtime smoke that downloads the official Cinder 0.9.3 mac package, builds a real `RendererGl` app, creates a current GL context, runs CPU oracles inside the app, validates Cinder `ci::gl::Texture2d` sender/receiver transfer for `320x240` and `641x479` in the macOS runtime smoke, records macOS GL copy-to-texture failure as `macos_iosurface_blit=FAIL`, shows CPU-copy fallback correctness, validates raw nozzle CPU frame interop for both sizes, and exits deterministically.
+- The macOS smoke runs a Cinder 0.9.3 `RendererGl` app. Both texture sizes must report `macos_iosurface_blit=PASS copy_cost=gpu-copy` and match the full-buffer oracle. The app separately checks raw nozzle CPU frames.
 
 ## Not claimed
 
 - No Windows fast GPU interop claim.
 - No Linux GL support claim.
-- No macOS receiver IOSurface/blit correctness claim; current receiver path falls back to CPU-copy after `nozzle_frame_copy_to_gl_texture` returns backend error 11. Top-down sender textures are rejected until nozzle exposes an origin-aware GL publish C API.
-- No zero-copy or end-to-end GPU-copy claim.
+- Top-down sender textures are rejected until nozzle exposes an origin-aware GL publish C API.
+- The GPU path copies texture data. The smoke checks pixel correctness and does not measure transfer latency or bandwidth.
 - No release artifact publication.
 - No Processing scope.
 
@@ -66,9 +64,9 @@ and verifies its SHA-256 before building the temporary Cinder app.
 | CPU pattern oracle inside Cinder app 641x479 | PASS on macOS CI | odd-size deterministic positive plus y-flip, R/B swap, alpha mutation, and byte-size negative probes inside the runtime app |
 | Runtime-generated RGBA CPU pixels -> nozzle writable frame -> independent receiver 320x240 | PASS on macOS CI | `CINDER_NOZZLE_FRAME_INTEROP size=320x240 frame_sender=PASS frame_receiver=PASS ... short_buffer=PASS copy_cost=cpu-copy`; RGBA/BGRA storage is normalized back to RGBA before the probe-based oracle checks y-flip/R/B/alpha |
 | Runtime-generated RGBA CPU pixels -> nozzle writable frame -> independent receiver 641x479 | PASS on macOS CI | `CINDER_NOZZLE_FRAME_INTEROP size=641x479 frame_sender=PASS frame_receiver=PASS ... short_buffer=PASS copy_cost=cpu-copy`; odd-size path uses the same probe-based deterministic oracle |
-| Cinder `ci::gl::TextureRef` runtime publish/copy 320x240 | PASS on macOS CI | `CINDER_NOZZLE_TEXTURE_INTEROP size=320x240 texture_sender=PASS texture_receiver=PASS texture_transfer=PASS macos_iosurface_blit=FAIL copy_cost=cpu-copy`; GL publish succeeds, GL receiver copy returns backend error 11, CPU-copy fallback updates the Cinder texture and passes the RGBA oracle |
-| Cinder `ci::gl::TextureRef` runtime publish/copy 641x479 | PASS on macOS CI | `CINDER_NOZZLE_TEXTURE_INTEROP size=641x479 texture_sender=PASS texture_receiver=PASS texture_transfer=PASS macos_iosurface_blit=FAIL copy_cost=cpu-copy`; full-buffer oracle catches size, stride-adjacent partial-copy, y-flip, R/B, and alpha mistakes |
-| macOS receiver IOSurface/blit correctness | FAIL/BLOCKED | `nozzle_frame_copy_to_gl_texture` returns `NOZZLE_ERROR_BACKEND_ERROR (11)` in the runtime smoke; correctness is not claimed |
+| Cinder `ci::gl::TextureRef` runtime publish/copy 320x240 | PASS on macOS CI | `CINDER_NOZZLE_TEXTURE_INTEROP size=320x240 texture_sender=PASS texture_receiver=PASS texture_transfer=PASS macos_iosurface_blit=PASS copy_cost=gpu-copy`; every received RGBA byte matches the published pattern |
+| Cinder `ci::gl::TextureRef` runtime publish/copy 641x479 | PASS on macOS CI | `CINDER_NOZZLE_TEXTURE_INTEROP size=641x479 texture_sender=PASS texture_receiver=PASS texture_transfer=PASS macos_iosurface_blit=PASS copy_cost=gpu-copy`; the same full-buffer comparison covers the odd dimensions |
+| CPU-copy receiver fallback | Implemented; unexercised by this smoke | If the GL copy fails, the receiver copies frame bytes to the Cinder texture. The smoke requires GL success. The separate CPU frame checks exercise the raw nozzle API. |
 | Windows fast GPU interop | UNSUPPORTED | blocked until core #6-style path is implemented/verified |
 | Linux GL interop | UNSUPPORTED | blocked until Linux GBM/EGL evidence exists |
 

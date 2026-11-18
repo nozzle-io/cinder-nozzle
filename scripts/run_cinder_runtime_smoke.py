@@ -136,9 +136,9 @@ target_link_libraries(CinderNozzleRuntimeSmoke PRIVATE nozzle)
     output = run_capture([str(candidates[0])], env=env)
     for marker in [
         'CINDER_NOZZLE_GL_CONTEXT current=PASS',
-        'CINDER_NOZZLE_TEXTURE_INTEROP size=320x240 texture_sender=PASS texture_receiver=PASS texture_transfer=PASS macos_iosurface_blit=FAIL copy_cost=cpu-copy',
-        'CINDER_NOZZLE_TEXTURE_INTEROP size=641x479 texture_sender=PASS texture_receiver=PASS texture_transfer=PASS macos_iosurface_blit=FAIL copy_cost=cpu-copy',
-        'CINDER_NOZZLE_TEXTURE_TRANSFER texture_sender=PASS texture_receiver=PASS texture_transfer=PASS macos_iosurface_blit=FAIL copy_cost=cpu-copy',
+        'CINDER_NOZZLE_TEXTURE_INTEROP size=320x240 texture_sender=PASS texture_receiver=PASS texture_transfer=PASS macos_iosurface_blit=PASS copy_cost=gpu-copy',
+        'CINDER_NOZZLE_TEXTURE_INTEROP size=641x479 texture_sender=PASS texture_receiver=PASS texture_transfer=PASS macos_iosurface_blit=PASS copy_cost=gpu-copy',
+        'CINDER_NOZZLE_TEXTURE_TRANSFER texture_sender=PASS texture_receiver=PASS texture_transfer=PASS macos_iosurface_blit=PASS copy_cost=gpu-copy',
         'CINDER_NOZZLE_FRAME_INTEROP size=320x240 frame_sender=PASS frame_receiver=PASS',
         'CINDER_NOZZLE_FRAME_INTEROP size=641x479 frame_sender=PASS frame_receiver=PASS',
         'CINDER_NOZZLE_RUNTIME_SMOKE PASS',

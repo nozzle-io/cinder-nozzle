@@ -188,7 +188,7 @@ texture_interop_result exercise_cinder_texture_interop(std::uint32_t width, std:
         return result;
     }
 
-    result.pass = true;
+    result.pass = result.macos_iosurface_blit_status == "PASS";
     result.texture_transfer_status = "PASS";
     result.message = receiver_status.message;
     texture_sender.stop();
